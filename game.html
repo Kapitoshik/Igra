@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Лопни шарики PRO</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(180deg, #1a1f36 0%, #0f1322 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #ffffff;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 18px;
+      font-weight: 700;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #soundBtn {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      background: rgba(15, 19, 34, 0.94);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+    .record-badge {
+      background: rgba(255, 202, 58, 0.15);
+      color: #ffca3a;
+      border: 1px solid rgba(255, 202, 58, 0.4);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    p {
+      margin: 0 0 20px;
+      font-size: 16px;
+      color: #a0aec0;
+      max-width: 320px;
+    }
+    .difficulty-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .diff-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      border: 2px solid transparent;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .diff-btn.active {
+      background: rgba(59, 130, 246, 0.3);
+      border-color: #3b82f6;
+      color: #ffffff;
+    }
+    #startBtn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 16px 46px;
+      font-size: 19px;
+      font-weight: 700;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="hud">
+    <div>Счёт: <span id="score">0</span></div>
+    <div>Время: <span id="time">30</span>с</div>
+    <button id="soundBtn" type="button">🔊</button>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="overlay">
+    <h1 id="title">Лопни шарики</h1>
+    <div class="record-badge">🏆 Рекорд: <span id="bestScore">0</span></div>
+    <p id="subtitle">Лопай цветные шары (+1/+2), золотые (+5) и избегай бомб (-5)!</p>
+    
+    <div class="difficulty-group">
+      <button type="button" class="diff-btn" data-diff="easy">Лёгкий</button>
+      <button type="button" class="diff-btn active" data-diff="normal">Средний</button>
+      <button type="button" class="diff-btn" data-diff="hard">Сложный</button>
+    </div>
+
+    <button id="startBtn" type="button">Играть</button>
+  </div>
+
+  <script>
+    (function() {
+      var canvas = document.getElementById('gameCanvas');
+      var ctx = canvas.getContext('2d');
+      var scoreEl = document.getElementById('score');
+      var timeEl = document.getElementById('time');
+      var bestScoreEl = document.getElementById('bestScore');
+      var overlay = document.getElementById('overlay');
+      var titleEl = document.getElementById('title');
+      var subtitleEl = document.getElementById('subtitle');
+      var startBtn = document.getElementById('startBtn');
+      var soundBtn = document.getElementById('soundBtn');
+      var diffButtons = document.querySelectorAll('.diff-btn');
+
+      var width = window.innerWidth || 360;
+      var height = window.innerHeight || 640;
+      var items = [];
+      var particles = [];
+      var floatingTexts = [];
+      var score = 0;
+      var bestScore = 0;
+      var timeLeft = 30;
+      var isPlaying = false;
+      var spawnTimer = 0;
+      var gameInterval = null;
+      var animFrameId = null;
+      var soundEnabled = true;
+      var currentDiff = 'normal';
+
+      try {
+        bestScore = parseInt(localStorage.getItem('bubble_best_score'), 10) || 0;
+      } catch (e) {}
+      bestScoreEl.textContent = bestScore;
+
+      var difficulties = {
+        easy: { spawnRate: 26, speedMult: 0.8, bombChance: 0.10 },
+        normal: { spawnRate: 20, speedMult: 1.15, bombChance: 0.18 },
+        hard: { spawnRate: 14, speedMult: 1.55, bombChance: 0.28 }
+      };
+
+      var colors = ['#ff595e', '#8ac926', '#1982c4', '#6a4c93', '#ff758f'];
+
+      // Выбор сложности
+      for (var i = 0; i < diffButtons.length; i++) {
+        diffButtons[i].addEventListener('click', function() {
+          for (var j = 0; j < diffButtons.length; j++) {
+            diffButtons[j].classList.remove('active');
+          }
+          this.classList.add('active');
+          currentDiff = this.getAttribute('data-diff');
+        });
+      }
+
+      // Кнопка звука
+      soundBtn.addEventListener('click', function() {
+        soundEnabled = !soundEnabled;
+        soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+      });
+
+      var audioCtx = null;
+      function playSound(type) {
+        if (!soundEnabled) return;
+        try {
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          if (!audioCtx) audioCtx = new AudioCtx();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+
+          var osc = audioCtx.createOscillator();
+          var gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          var now = audioCtx.currentTime;
+
+          if (type === 'pop') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(320, now);
+            osc.frequency.exponentialRampToValueAtTime(680, now + 0.09);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+            osc.start(now);
+            osc.stop(now + 0.09);
+          } else if (type === 'gold') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.setValueAtTime(780, now + 0.07);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+          } else if (type === 'bomb') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.28);
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+            osc.start(now);
+            osc.stop(now + 0.28);
+          } else if (type === 'end') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(554, now + 0.12);
+            osc.frequency.setValueAtTime(659, now + 0.24);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+            osc.start(now);
+            osc.stop(now + 0.45);
+          }
+        } catch (e) {}
+      }
+
+      function resize() {
+        width = canvas.width = window.innerWidth || document.documentElement.clientWidth || 360;
+        height = canvas.height = window.innerHeight || document.documentElement.clientHeight || 640;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      function spawnItem() {
+        var cfg = difficulties[currentDiff] || difficulties.normal;
+        var rand = Math.random();
+        var type = 'normal';
+
+        if (rand < cfg.bombChance) {
+          type = 'bomb';
+        } else if (rand < cfg.bombChance + 0.10) {
+          type = 'gold';
+        }
+
+        var radius = type === 'gold' ? 24 : (Math.random() * 18 + 25);
+        var x = Math.random() * Math.max(20, width - radius * 2) + radius;
+        var y = height + radius;
+        var baseSpeed = Math.random() * 2 + 2 + (30 - timeLeft) * 0.06;
+        var speed = baseSpeed * cfg.speedMult * (type === 'gold' ? 1.3 : 1);
+
+        var color = colors[Math.floor(Math.random() * colors.length)];
+        var points = radius < 31 ? 2 : 1;
+
+        if (type === 'bomb') {
+          color = '#1e293b';
+          points = -5;
+        } else if (type === 'gold') {
+          color = '#ffca3a';
+          points = 5;
+        }
+
+        items.push({ x: x, y: y, radius: radius, speed: speed, color: color, points: points, type: type });
+      }
+
+      function createExplosion(x, y, color) {
+        for (var i = 0; i < 12; i++) {
+          var angle = Math.random() * Math.PI * 2;
+          var speed = Math.random() * 4.5 + 1;
+          particles.push({
+            x: x, y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: Math.random() * 4 + 2,
+            color: color,
+            alpha: 1
+          });
+        }
+      }
+
+      function addFloatingText(x, y, text, color) {
+        floatingTexts.push({ x: x, y: y, text: text, color: color, alpha: 1 });
+      }
+
+      // Единый обработчик PointerDown работает и для мыши, и для тача без конфликтов
+      canvas.addEventListener('pointerdown', function(e) {
+        if (!isPlaying) return;
+        var rect = canvas.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+
