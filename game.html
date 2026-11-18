@@ -54,7 +54,11 @@
       <button type="button" class="btn-opt" data-d="hard">Сложный</button>
     </div>
     <div class="sec-title">Магазин фонов (за монеты)</div>
-    <div class="row" id="shopRow"></div>
+    <div class="row" id="shopRow">
+      <button type="button" class="shop-btn" data-id="space">🌌 Космос</button>
+      <button type="button" class="shop-btn" data-id="ocean">🌊 Океан</button>
+      <button type="button" class="shop-btn" data-id="sunset">🌅 Закат</button>
+    </div>
     <button id="startBtn" type="button">Играть</button>
   </div>
   <script>
@@ -74,87 +78,92 @@
     var comboBox = document.getElementById('comboBox'), comboVal = document.getElementById('comboVal');
     var overlay = document.getElementById('overlay'), titleEl = document.getElementById('title');
     var startBtn = document.getElementById('startBtn'), soundBtn = document.getElementById('soundBtn');
-    var shopRow = document.getElementById('shopRow');
 
     var w = 360, h = 640, items = [], parts = [], texts = [], stars = [];
     var score = 0, best = 0, coins = 0, time = 30, lives = 3, combo = 0, freeze = 0, shake = 0;
     var playing = false, timer = 0, bossSpawned = false, iv = null, raf = null, sound = true;
     var diff = 'normal', gameMode = 'time', activeTheme = 'space';
-    var ownedThemes = { space: true };
+    var ownedOcean = false, ownedSunset = false;
 
     try {
       best = Number(localStorage.getItem('u_best')) || 0;
       coins = Number(localStorage.getItem('u_coins')) || 0;
       activeTheme = localStorage.getItem('u_theme') || 'space';
-      var savedOwned = localStorage.getItem('u_owned');
-      if (savedOwned) ownedThemes = JSON.parse(savedOwned);
+      ownedOcean = localStorage.getItem('u_ocean') === '1';
+      ownedSunset = localStorage.getItem('u_sunset') === '1';
     } catch (e) {}
-
-    var themes = [
-      { id: 'space', name: '🌌 Космос', cost: 0, top: '#111827', bot: '#090d16' },
-      { id: 'ocean', name: '🌊 Океан', cost: 150, top: '#0369a1', bot: '#082f49' },
-      { id: 'sunset', name: '🌅 Закат', cost: 300, top: '#7c2d12', bot: '#1e1b4b' }
-    ];
 
     function saveData() {
       try {
         localStorage.setItem('u_best', String(best));
         localStorage.setItem('u_coins', String(coins));
         localStorage.setItem('u_theme', activeTheme);
-        localStorage.setItem('u_owned', JSON.stringify(ownedThemes));
+        localStorage.setItem('u_ocean', ownedOcean ? '1' : '0');
+        localStorage.setItem('u_sunset', ownedSunset ? '1' : '0');
       } catch (e) {}
     }
 
     function renderShop() {
       bestEl.textContent = String(best);
       coinsEl.textContent = String(coins);
-      shopRow.innerHTML = '';
-      for (var i = 0; i < themes.length; i++) {
-        var th = themes[i];
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.setAttribute('data-id', th.id);
-        if (ownedThemes[th.id]) {
-          btn.className = activeTheme === th.id ? 'shop-btn owned equipped' : 'shop-btn owned';
-          btn.textContent = activeTheme === th.id ? th.name + ' ✓' : th.name;
-        } else {
-          btn.className = 'shop-btn';
-          btn.textContent = th.name + ' (' + th.cost + '💰)';
-        }
-        btn.onclick = function() {
-          var id = this.getAttribute('data-id');
-          for (var j = 0; j < themes.length; j++) {
-            if (themes[j].id === id) {
-              if (ownedThemes[id]) { activeTheme = id; saveData(); renderShop(); }
-              else if (coins >= themes[j].cost) {
-                coins -= themes[j].cost; ownedThemes[id] = true; activeTheme = id;
-                saveData(); renderShop(); beep(500, 900, 0.2, 'triangle');
-              } else { vibro('err'); }
-            }
+      var btns = document.querySelectorAll('#shopRow .shop-btn');
+      btns.forEach(function(btn) {
+        var id = btn.getAttribute('data-id');
+        if (id === 'space') {
+          btn.className = activeTheme === 'space' ? 'shop-btn owned equipped' : 'shop-btn owned';
+          btn.textContent = activeTheme === 'space' ? '🌌 Космос ✓' : '🌌 Космос';
+        } else if (id === 'ocean') {
+          if (ownedOcean) {
+            btn.className = activeTheme === 'ocean' ? 'shop-btn owned equipped' : 'shop-btn owned';
+            btn.textContent = activeTheme === 'ocean' ? '🌊 Океан ✓' : '🌊 Океан';
+          } else {
+            btn.className = 'shop-btn';
+            btn.textContent = '🌊 Океан (150💰)';
           }
-        };
-        shopRow.appendChild(btn);
-      }
+        } else if (id === 'sunset') {
+          if (ownedSunset) {
+            btn.className = activeTheme === 'sunset' ? 'shop-btn owned equipped' : 'shop-btn owned';
+            btn.textContent = activeTheme === 'sunset' ? '🌅 Закат ✓' : '🌅 Закат';
+          } else {
+            btn.className = 'shop-btn';
+            btn.textContent = '🌅 Закат (300💰)';
+          }
+        }
+      });
     }
+
+    document.querySelectorAll('#shopRow .shop-btn').forEach(function(btn) {
+      btn.onclick = function() {
+        var id = this.getAttribute('data-id');
+        if (id === 'space') { activeTheme = 'space'; saveData(); renderShop(); }
+        else if (id === 'ocean') {
+          if (ownedOcean) { activeTheme = 'ocean'; saveData(); renderShop(); }
+          else if (coins >= 150) { coins -= 150; ownedOcean = true; activeTheme = 'ocean'; saveData(); renderShop(); beep(500, 900, 0.2, 'triangle'); }
+          else vibro('err');
+        } else if (id === 'sunset') {
+          if (ownedSunset) { activeTheme = 'sunset'; saveData(); renderShop(); }
+          else if (coins >= 300) { coins -= 300; ownedSunset = true; activeTheme = 'sunset'; saveData(); renderShop(); beep(500, 900, 0.2, 'triangle'); }
+          else vibro('err');
+        }
+      };
+    });
     renderShop();
 
-    var modeBtns = document.querySelectorAll('#modeRow .btn-opt');
-    for (var i = 0; i < modeBtns.length; i++) {
-      modeBtns[i].onclick = function() {
-        for (var j = 0; j < modeBtns.length; j++) modeBtns[j].className = 'btn-opt';
+    document.querySelectorAll('#modeRow .btn-opt').forEach(function(btn) {
+      btn.onclick = function() {
+        document.querySelectorAll('#modeRow .btn-opt').forEach(function(b) { b.className = 'btn-opt'; });
         this.className = 'btn-opt active';
         gameMode = this.getAttribute('data-m');
       };
-    }
+    });
 
-    var diffBtns = document.querySelectorAll('#diffRow .btn-opt');
-    for (var i = 0; i < diffBtns.length; i++) {
-      diffBtns[i].onclick = function() {
-        for (var j = 0; j < diffBtns.length; j++) diffBtns[j].className = 'btn-opt';
+    document.querySelectorAll('#diffRow .btn-opt').forEach(function(btn) {
+      btn.onclick = function() {
+        document.querySelectorAll('#diffRow .btn-opt').forEach(function(b) { b.className = 'btn-opt'; });
         this.className = 'btn-opt active';
         diff = this.getAttribute('data-d');
       };
-    }
+    });
 
     soundBtn.onclick = function() { sound = !sound; soundBtn.textContent = sound ? '🔊' : '🔇'; };
 
@@ -185,9 +194,6 @@
     window.onresize = resize;
     resize();
 
-    var cfgMap = { easy: { rate: 26, spd: 0.85, bomb: 0.1 }, normal: { rate: 20, spd: 1.15, bomb: 0.17 }, hard: { rate: 15, spd: 1.5, bomb: 0.25 } };
-    var pals = ['#ff758f|#c9184a', '#4cc9f0|#4361ee', '#80ed99|#38b000', '#f72585|#7209b7', '#ff9e00|#ff5400'];
-
     function setCombo(v) {
       combo = v;
       var m = Math.min(4, 1 + Math.floor(combo / 4));
@@ -198,22 +204,33 @@
 
     function updateStatus() {
       if (gameMode === 'time') statusPill.textContent = '⏱ ' + time + 'с';
-      else statusPill.textContent = '❤️'.repeat(Math.max(0, lives)) || '💔';
+      else statusPill.textContent = lives === 3 ? '❤️❤️❤️' : (lives === 2 ? '❤️❤️' : (lives === 1 ? '❤️' : '💔'));
+    }
+
+    function pickColors() {
+      var n = Math.floor(Math.random() * 5);
+      if (n === 0) return { a: '#ff758f', b: '#c9184a' };
+      if (n === 1) return { a: '#4cc9f0', b: '#4361ee' };
+      if (n === 2) return { a: '#80ed99', b: '#38b000' };
+      if (n === 3) return { a: '#f72585', b: '#7209b7' };
+      return { a: '#ff9e00', b: '#ff5400' };
     }
 
     function spawn(isBoss) {
       if (isBoss) {
-        items.push({ x: w / 2, bx: w / 2, y: h + 65, rad: 62, spd: 0.65, c1: '#e11d48', c2: '#4c0519', pts: 50, kind: 'boss', hp: 12, maxHp: 12, ph: 0 });
+        items.push({ x: w / 2, bx: w / 2, y: h + 65, rad: 62, spd: 0.65, c1: '#e11d48', c2: '#4c0519', pts: 50, kind: 'boss', hp: 12, ph: 0 });
         return;
       }
-      var cfg = cfgMap[diff], r = Math.random();
-      var kind = r < cfg.bomb ? 'bomb' : (r < cfg.bomb + 0.09 ? 'gold' : (r < cfg.bomb + 0.15 ? 'ice' : 'norm'));
+      var rateSpd = diff === 'easy' ? 0.85 : (diff === 'hard' ? 1.5 : 1.15);
+      var bombCh = diff === 'easy' ? 0.10 : (diff === 'hard' ? 0.25 : 0.17);
+      var r = Math.random();
+      var kind = r < bombCh ? 'bomb' : (r < bombCh + 0.09 ? 'gold' : (r < bombCh + 0.15 ? 'ice' : 'norm'));
       var rad = kind === 'gold' ? 25 : (Math.random() * 15 + 26);
       var x = Math.random() * Math.max(30, w - rad * 2) + rad;
-      var spd = (Math.random() * 1.6 + 2.0) * cfg.spd * (kind === 'gold' ? 1.25 : 1);
-      var pair = pals[Math.floor(Math.random() * pals.length)].split('|');
+      var spd = (Math.random() * 1.6 + 2.0) * rateSpd * (kind === 'gold' ? 1.25 : 1);
+      var pal = pickColors();
       var pts = kind === 'bomb' ? -5 : (kind === 'gold' ? 5 : (kind === 'ice' ? 2 : (rad < 32 ? 2 : 1)));
-      items.push({ x: x, bx: x, y: h + rad, rad: rad, spd: spd, c1: pair, c2: pair, pts: pts, kind: kind, hp: 1, maxHp: 1, ph: Math.random() * 6.28 });
+      items.push({ x: x, bx: x, y: h + rad, rad: rad, spd: spd, c1: pal.a, c2: pal.b, pts: pts, kind: kind, hp: 1, ph: Math.random() * 6.28 });
     }
 
     function boom(x, y, col) {
@@ -225,9 +242,13 @@
     c.onpointerdown = function(e) {
       if (!playing) return;
       var rect = c.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top, hit = false;
-      for (var i = items.length - 1; i >= 0; i--) {
-        var it = items[i];
-        if (Math.hypot(x - it.x, y - it.y) <= it.rad + 14) {
+      var remaining = [];
+      for (var i = 0; i < items.length; i++) {
+        var it = items.shift();
+        items.push(it);
+      }
+      items.forEach(function(it) {
+        if (!hit && Math.hypot(x - it.x, y - it.y) <= it.rad + 14) {
           hit = true;
           if (it.kind === 'boss') {
             it.hp--;
@@ -241,16 +262,16 @@
               beep(400, 950, 0.3, 'triangle'); vibro('ok');
               boom(it.x, it.y, '#ffca3a');
               texts.push({ x: it.x, y: it.y, str: 'БОСС +' + bonus + '👑', col: '#ffca3a', a: 1 });
-              items.splice(i, 1);
+            } else {
+              remaining.push(it);
             }
           } else if (it.kind === 'bomb') {
             setCombo(0); score = Math.max(0, score - 5); shake = 14;
             beep(150, 40, 0.25, 'sawtooth'); vibro('err'); boom(it.x, it.y, '#ef4444');
             texts.push({ x: it.x, y: it.y, str: '-5', col: '#ef4444', a: 1 });
-            items.splice(i, 1);
             if (gameMode === 'surv') {
               lives--; updateStatus();
-              if (lives <= 0) { finishGame(); return; }
+              if (lives <= 0) { scoreEl.textContent = String(score); finishGame(); }
             }
           } else {
             var add = it.pts * setCombo(combo + 1);
@@ -267,12 +288,13 @@
               beep(340 + combo * 15, 680 + combo * 15, 0.1, 'sine'); vibro('light'); boom(it.x, it.y, it.c1);
               texts.push({ x: it.x, y: it.y, str: '+' + add, col: '#fff', a: 1 });
             }
-            items.splice(i, 1);
           }
           scoreEl.textContent = String(score);
-          break;
+        } else {
+          remaining.push(it);
         }
-      }
+      });
+      items = remaining;
       if (!hit) setCombo(0);
     };
 
@@ -300,39 +322,37 @@
         shake = shake < 0.5 ? 0 : shake * 0.85;
       }
 
-      var th = themes;
-      var bg = ctx.createLinearGradient(0, 0, 0, h);
-      bg.addColorStop(0, freeze > 0 ? '#0c2d48' : th.top);
-      bg.addColorStop(1, th.bot);
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-
-      for (var s = 0; s < stars.length; s++) {
-        var st = stars[s]; st.a += 0.02;
-        ctx.globalAlpha = 0.2 + Math.abs(Math.sin(st.a)) * 0.5;
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 6.28); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-
-      if (freeze > 0) { freeze--; statusPill.style.borderColor = '#38bdf8'; }
-      else statusPill.style.borderColor = 'rgba(255,255,255,0.18)';
-
-      var slow = freeze > 0 ? 0.45 : 1;
-      timer++;
-      if (timer > cfgMap[diff].rate / slow) { spawn(false); timer = 0; }
-      if (!bossSpawned && score >= 40) { bossSpawned = true; spawn(true); }
-
-      for (var i = items.length - 1; i >= 0; i--) {
-        var it = items[i];
-        it.y -= it.spd * slow; it.ph += 0.04;
-        it.x = it.kind === 'boss' ? w / 2 + Math.sin(it.ph * 0.6) * 40 : it.bx + Math.sin(it.ph) * 14;
-
-        var g = ctx.createRadialGradient(it.x - it.rad * 0.3, it.y - it.rad * 0.3, it.rad * 0.1, it.x, it.y, it.rad);
       var topCol = activeTheme === 'ocean' ? '#0369a1' : (activeTheme === 'sunset' ? '#7c2d12' : '#111827');
       var botCol = activeTheme === 'ocean' ? '#082f49' : (activeTheme === 'sunset' ? '#1e1b4b' : '#090d16');
       var bg = ctx.createLinearGradient(0, 0, 0, h);
       bg.addColorStop(0, freeze > 0 ? '#0c2d48' : topCol);
       bg.addColorStop(1, botCol);
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
 
+      stars.forEach(function(st) {
+        st.a += 0.02;
+        ctx.globalAlpha = 0.2 + Math.abs(Math.sin(st.a)) * 0.5;
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 6.28); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      if (freeze > 0) { freeze--; statusPill.style.borderColor = '#38bdf8'; }
+      else statusPill.style.borderColor = 'rgba(255,255,255,0.18)';
+
+      var spawnRate = diff === 'easy' ? 26 : (diff === 'hard' ? 15 : 20);
+      var slow = freeze > 0 ? 0.45 : 1;
+      timer++;
+      if (timer > spawnRate / slow) { spawn(false); timer = 0; }
+      if (!bossSpawned && score >= 40) { bossSpawned = true; spawn(true); }
+
+      var nextItems = [];
+      items.forEach(function(it) {
+        it.y -= it.spd * slow; it.ph += 0.04;
+        it.x = it.kind === 'boss' ? w / 2 + Math.sin(it.ph * 0.6) * 40 : it.bx + Math.sin(it.ph) * 14;
+
+        var g = ctx.createRadialGradient(it.x - it.rad * 0.3, it.y - it.rad * 0.3, it.rad * 0.1, it.x, it.y, it.rad);
+        g.addColorStop(0, it.kind === 'bomb' ? '#475569' : (it.kind === 'gold' ? '#fef08a' : (it.kind === 'ice' ? '#bae6fd' : it.c1)));
+        g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d97706' : (it.kind === 'ice' ? '#0284c7' : it.c2)));
         ctx.beginPath(); ctx.arc(it.x, it.y, it.rad, 0, 6.28); ctx.fillStyle = g; ctx.fill();
 
         if (it.kind === 'boss') {
@@ -355,24 +375,36 @@
         if (it.y + it.rad < 0) {
           if (gameMode === 'surv' && (it.kind === 'norm' || it.kind === 'gold')) {
             lives--; updateStatus(); setCombo(0); shake = 10;
-            if (lives <= 0) { items.splice(i, 1); finishGame(); return; }
+            if (lives <= 0 && playing) { finishGame(); }
           }
-          items.splice(i, 1);
+        } else {
+          nextItems.push(it);
         }
-      }
+      });
+      items = nextItems;
 
-      for (var j = parts.length - 1; j >= 0; j--) {
-        var p = parts[j]; p.x += p.vx; p.y += p.vy; p.a -= 0.035;
-        if (p.a <= 0) parts.splice(j, 1);
-        else { ctx.globalAlpha = p.a; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.28); ctx.fillStyle = p.col; ctx.fill(); }
-      }
-      for (var k = texts.length - 1; k >= 0; k--) {
-        var tx = texts[k]; tx.y -= 1.8; tx.a -= 0.025;
-        if (tx.a <= 0) texts.splice(k, 1);
-        else { ctx.globalAlpha = tx.a; ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = tx.col; ctx.textAlign = 'center'; ctx.fillText(tx.str, tx.x, tx.y); }
-      }
+      var nextParts = [];
+      parts.forEach(function(p) {
+        p.x += p.vx; p.y += p.vy; p.a -= 0.035;
+        if (p.a > 0) {
+          ctx.globalAlpha = p.a; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.28); ctx.fillStyle = p.col; ctx.fill();
+          nextParts.push(p);
+        }
+      });
+      parts = nextParts;
+
+      var nextTexts = [];
+      texts.forEach(function(tx) {
+        tx.y -= 1.8; tx.a -= 0.025;
+        if (tx.a > 0) {
+          ctx.globalAlpha = tx.a; ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = tx.col; ctx.textAlign = 'center'; ctx.fillText(tx.str, tx.x, tx.y);
+          nextTexts.push(tx);
+        }
+      });
+      texts = nextTexts;
+
       ctx.restore();
-      raf = requestAnimationFrame(loop);
+      if (playing) raf = requestAnimationFrame(loop);
     }
 
     startBtn.onclick = function() {
