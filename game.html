@@ -3,57 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Лопни шарики DELUXE</title>
+  <title>Лопни шарики ULTRA</title>
   <script src="https://max.ru" defer></script>
   <style>
-    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #090d16; font-family: sans-serif; color: #fff; }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-    #hud { position: absolute; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; z-index: 5; }
-    .pill { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); padding: 8px 14px; border-radius: 14px; font-size: 16px; font-weight: 700; }
-    #comboBox { color: #ffca3a; border-color: rgba(255,202,58,0.4); opacity: 0; transition: 0.2s; }
-    #comboBox.show { opacity: 1; transform: scale(1.05); }
-    #soundBtn { pointer-events: auto; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15); color: #fff; width: 42px; height: 42px; border-radius: 50%; font-size: 18px; }
-    #overlay { position: absolute; inset: 0; z-index: 20; background: radial-gradient(circle at top, #1e293b 0%, #090d16 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-    h1 { margin: 0 0 8px; font-size: 30px; color: #60a5fa; }
-    .badge { background: rgba(255,202,58,0.15); color: #ffca3a; border: 1px solid rgba(255,202,58,0.35); padding: 6px 18px; border-radius: 20px; margin-bottom: 14px; font-weight: 700; }
-    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 340px; margin-bottom: 20px; }
-    .tag { background: rgba(255,255,255,0.08); padding: 6px 10px; border-radius: 10px; font-size: 13px; color: #cbd5e1; }
-    .row { display: flex; gap: 8px; margin-bottom: 22px; }
-    .diff { background: rgba(255,255,255,0.08); color: #94a3b8; border: 2px solid transparent; padding: 10px 14px; border-radius: 12px; font-weight: 600; }
-    .diff.active { background: rgba(59,130,246,0.25); border-color: #3b82f6; color: #fff; }
-    #startBtn { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border: none; padding: 16px 46px; font-size: 18px; font-weight: 700; border-radius: 16px; }
+    #hud { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; z-index: 5; gap: 6px; }
+    .pill { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); padding: 7px 12px; border-radius: 12px; font-size: 15px; font-weight: 700; }
+    #comboBox { color: #ffca3a; border-color: rgba(255,202,58,0.5); opacity: 0; transition: 0.2s; }
+    #comboBox.show { opacity: 1; transform: scale(1.06); }
+    #soundBtn { pointer-events: auto; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.18); color: #fff; width: 38px; height: 38px; border-radius: 50%; font-size: 16px; }
+    #overlay { position: absolute; inset: 0; z-index: 20; background: radial-gradient(circle at top, #1e293b 0%, #090d16 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; color: #60a5fa; }
+    .stats { display: flex; gap: 10px; margin-bottom: 14px; }
+    .badge { background: rgba(255,202,58,0.15); color: #ffca3a; border: 1px solid rgba(255,202,58,0.35); padding: 5px 14px; border-radius: 16px; font-weight: 700; font-size: 14px; }
+    .sec-title { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; }
+    .btn-opt { background: rgba(255,255,255,0.08); color: #cbd5e1; border: 2px solid transparent; padding: 9px 14px; border-radius: 11px; font-weight: 600; font-size: 14px; }
+    .btn-opt.active { background: rgba(59,130,246,0.28); border-color: #3b82f6; color: #fff; }
+    .shop-btn { background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.4); color: #e9d5ff; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+    .shop-btn.owned { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #bbf7d0; }
+    .shop-btn.equipped { border: 2px solid #22c55e; color: #fff; }
+    #startBtn { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border: none; padding: 15px 46px; font-size: 18px; font-weight: 700; border-radius: 15px; margin-top: 6px; box-shadow: 0 6px 20px rgba(37,99,235,0.45); }
   </style>
 </head>
 <body>
   <div id="hud">
     <div class="pill">💎 <span id="score">0</span></div>
     <div class="pill" id="comboBox">🔥 x<span id="comboVal">1</span></div>
-    <div class="pill" id="timePill">⏱ <span id="time">30</span>с</div>
+    <div class="pill" id="statusPill">⏱ 30с</div>
     <button id="soundBtn" type="button">🔊</button>
   </div>
   <canvas id="c"></canvas>
   <div id="overlay">
-    <h1 id="title">Лопни шарики</h1>
-    <div class="badge">🏆 Рекорд: <span id="best">0</span></div>
-    <div class="legend" id="sub">
-      <div class="tag">🎈 Шар +1/+2</div>
-      <div class="tag">⭐ Золотой +5</div>
-      <div class="tag">❄️ Лёд +3с</div>
-      <div class="tag">💣 Бомба -5</div>
+    <h1 id="title">Лопни шарики ULTRA</h1>
+    <div class="stats">
+      <div class="badge">🏆 Рекорд: <span id="best">0</span></div>
+      <div class="badge">💰 Монеты: <span id="coins">0</span></div>
     </div>
-    <div class="row">
-      <button type="button" class="diff" data-d="easy">Лёгкий</button>
-      <button type="button" class="diff active" data-d="normal">Средний</button>
-      <button type="button" class="diff" data-d="hard">Сложный</button>
+    <div class="sec-title">Режим игры</div>
+    <div class="row" id="modeRow">
+      <button type="button" class="btn-opt active" data-m="time">⏱ На время</button>
+      <button type="button" class="btn-opt" data-m="surv">❤️ Выживание</button>
     </div>
+    <div class="sec-title">Сложность</div>
+    <div class="row" id="diffRow">
+      <button type="button" class="btn-opt" data-d="easy">Лёгкий</button>
+      <button type="button" class="btn-opt active" data-d="normal">Средний</button>
+      <button type="button" class="btn-opt" data-d="hard">Сложный</button>
+    </div>
+    <div class="sec-title">Магазин фонов (за монеты)</div>
+    <div class="row" id="shopRow"></div>
     <button id="startBtn" type="button">Играть</button>
   </div>
   <script>
     var tg = null;
-    window.onload = function() {
-      try { tg = window.WebApp; if (tg && tg.ready) tg.ready(); } catch (e) {}
-    };
+    window.onload = function() { try { tg = window.WebApp; if (tg && tg.ready) tg.ready(); } catch (e) {} };
     function vibro(t) {
       try {
         if (!tg || !tg.HapticFeedback) return;
@@ -63,30 +69,93 @@
     }
 
     var c = document.getElementById('c'), ctx = c.getContext('2d');
-    var scoreEl = document.getElementById('score'), timeEl = document.getElementById('time');
-    var timePill = document.getElementById('timePill'), bestEl = document.getElementById('best');
+    var scoreEl = document.getElementById('score'), statusPill = document.getElementById('statusPill');
+    var bestEl = document.getElementById('best'), coinsEl = document.getElementById('coins');
     var comboBox = document.getElementById('comboBox'), comboVal = document.getElementById('comboVal');
     var overlay = document.getElementById('overlay'), titleEl = document.getElementById('title');
-    var subEl = document.getElementById('sub'), startBtn = document.getElementById('startBtn');
-    var soundBtn = document.getElementById('soundBtn'), diffs = document.querySelectorAll('.diff');
+    var startBtn = document.getElementById('startBtn'), soundBtn = document.getElementById('soundBtn');
+    var shopRow = document.getElementById('shopRow');
 
     var w = 360, h = 640, items = [], parts = [], texts = [], stars = [];
-    var score = 0, best = 0, time = 30, combo = 0, freeze = 0, shake = 0;
-    var playing = false, timer = 0, iv = null, raf = null, sound = true, mode = 'normal';
+    var score = 0, best = 0, coins = 0, time = 30, lives = 3, combo = 0, freeze = 0, shake = 0;
+    var playing = false, timer = 0, bossSpawned = false, iv = null, raf = null, sound = true;
+    var diff = 'normal', gameMode = 'time', activeTheme = 'space';
+    var ownedThemes = { space: true };
 
-    try { best = Number(localStorage.getItem('b_best')) || 0; } catch (e) {}
-    bestEl.textContent = best;
+    try {
+      best = Number(localStorage.getItem('u_best')) || 0;
+      coins = Number(localStorage.getItem('u_coins')) || 0;
+      activeTheme = localStorage.getItem('u_theme') || 'space';
+      var savedOwned = localStorage.getItem('u_owned');
+      if (savedOwned) ownedThemes = JSON.parse(savedOwned);
+    } catch (e) {}
 
-    var cfgMap = { easy: { rate: 25, spd: 0.85, bomb: 0.1 }, normal: { rate: 19, spd: 1.2, bomb: 0.18 }, hard: { rate: 14, spd: 1.6, bomb: 0.27 } };
-    var pals = [['#ff758f','#c9184a'], ['#4cc9f0','#4361ee'], ['#80ed99','#38b000'], ['#f72585','#7209b7'], ['#ff9e00','#ff5400']];
+    var themes = [
+      { id: 'space', name: '🌌 Космос', cost: 0, top: '#111827', bot: '#090d16' },
+      { id: 'ocean', name: '🌊 Океан', cost: 150, top: '#0369a1', bot: '#082f49' },
+      { id: 'sunset', name: '🌅 Закат', cost: 300, top: '#7c2d12', bot: '#1e1b4b' }
+    ];
 
-    for (var i = 0; i < diffs.length; i++) {
-      diffs[i].onclick = function() {
-        for (var j = 0; j < diffs.length; j++) diffs[j].className = 'diff';
-        this.className = 'diff active';
-        mode = this.getAttribute('data-d');
+    function saveData() {
+      try {
+        localStorage.setItem('u_best', String(best));
+        localStorage.setItem('u_coins', String(coins));
+        localStorage.setItem('u_theme', activeTheme);
+        localStorage.setItem('u_owned', JSON.stringify(ownedThemes));
+      } catch (e) {}
+    }
+
+    function renderShop() {
+      bestEl.textContent = String(best);
+      coinsEl.textContent = String(coins);
+      shopRow.innerHTML = '';
+      for (var i = 0; i < themes.length; i++) {
+        var th = themes[i];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-id', th.id);
+        if (ownedThemes[th.id]) {
+          btn.className = activeTheme === th.id ? 'shop-btn owned equipped' : 'shop-btn owned';
+          btn.textContent = activeTheme === th.id ? th.name + ' ✓' : th.name;
+        } else {
+          btn.className = 'shop-btn';
+          btn.textContent = th.name + ' (' + th.cost + '💰)';
+        }
+        btn.onclick = function() {
+          var id = this.getAttribute('data-id');
+          for (var j = 0; j < themes.length; j++) {
+            if (themes[j].id === id) {
+              if (ownedThemes[id]) { activeTheme = id; saveData(); renderShop(); }
+              else if (coins >= themes[j].cost) {
+                coins -= themes[j].cost; ownedThemes[id] = true; activeTheme = id;
+                saveData(); renderShop(); beep(500, 900, 0.2, 'triangle');
+              } else { vibro('err'); }
+            }
+          }
+        };
+        shopRow.appendChild(btn);
+      }
+    }
+    renderShop();
+
+    var modeBtns = document.querySelectorAll('#modeRow .btn-opt');
+    for (var i = 0; i < modeBtns.length; i++) {
+      modeBtns[i].onclick = function() {
+        for (var j = 0; j < modeBtns.length; j++) modeBtns[j].className = 'btn-opt';
+        this.className = 'btn-opt active';
+        gameMode = this.getAttribute('data-m');
       };
     }
+
+    var diffBtns = document.querySelectorAll('#diffRow .btn-opt');
+    for (var i = 0; i < diffBtns.length; i++) {
+      diffBtns[i].onclick = function() {
+        for (var j = 0; j < diffBtns.length; j++) diffBtns[j].className = 'btn-opt';
+        this.className = 'btn-opt active';
+        diff = this.getAttribute('data-d');
+      };
+    }
+
     soundBtn.onclick = function() { sound = !sound; soundBtn.textContent = sound ? '🔊' : '🔇'; };
 
     var ac = null;
@@ -101,7 +170,7 @@
         var now = ac.currentTime;
         o.frequency.setValueAtTime(f1, now);
         o.frequency.exponentialRampToValueAtTime(f2, now + dur);
-        g.gain.setValueAtTime(0.22, now);
+        g.gain.setValueAtTime(0.2, now);
         g.gain.exponentialRampToValueAtTime(0.01, now + dur);
         o.start(now); o.stop(now + dur);
       } catch (e) {}
@@ -116,23 +185,35 @@
     window.onresize = resize;
     resize();
 
+    var cfgMap = { easy: { rate: 26, spd: 0.85, bomb: 0.1 }, normal: { rate: 20, spd: 1.15, bomb: 0.17 }, hard: { rate: 15, spd: 1.5, bomb: 0.25 } };
+    var pals = ['#ff758f|#c9184a', '#4cc9f0|#4361ee', '#80ed99|#38b000', '#f72585|#7209b7', '#ff9e00|#ff5400'];
+
     function setCombo(v) {
       combo = v;
       var m = Math.min(4, 1 + Math.floor(combo / 4));
-      comboVal.textContent = m;
+      comboVal.textContent = String(m);
       comboBox.className = m > 1 ? 'pill show' : 'pill';
       return m;
     }
 
-    function spawn() {
-      var cfg = cfgMap[mode], r = Math.random();
+    function updateStatus() {
+      if (gameMode === 'time') statusPill.textContent = '⏱ ' + time + 'с';
+      else statusPill.textContent = '❤️'.repeat(Math.max(0, lives)) || '💔';
+    }
+
+    function spawn(isBoss) {
+      if (isBoss) {
+        items.push({ x: w / 2, bx: w / 2, y: h + 65, rad: 62, spd: 0.65, c1: '#e11d48', c2: '#4c0519', pts: 50, kind: 'boss', hp: 12, maxHp: 12, ph: 0 });
+        return;
+      }
+      var cfg = cfgMap[diff], r = Math.random();
       var kind = r < cfg.bomb ? 'bomb' : (r < cfg.bomb + 0.09 ? 'gold' : (r < cfg.bomb + 0.15 ? 'ice' : 'norm'));
-      var rad = kind === 'gold' ? 25 : (Math.random() * 16 + 26);
+      var rad = kind === 'gold' ? 25 : (Math.random() * 15 + 26);
       var x = Math.random() * Math.max(30, w - rad * 2) + rad;
-      var spd = (Math.random() * 1.8 + 2.1) * cfg.spd * (kind === 'gold' ? 1.25 : 1);
-      var pal = pals[Math.floor(Math.random() * pals.length)];
+      var spd = (Math.random() * 1.6 + 2.0) * cfg.spd * (kind === 'gold' ? 1.25 : 1);
+      var pair = pals[Math.floor(Math.random() * pals.length)].split('|');
       var pts = kind === 'bomb' ? -5 : (kind === 'gold' ? 5 : (kind === 'ice' ? 2 : (rad < 32 ? 2 : 1)));
-      items.push({ x: x, bx: x, y: h + rad, rad: rad, spd: spd, c1: pal, c2: pal, pts: pts, kind: kind, ph: Math.random() * 6.28 });
+      items.push({ x: x, bx: x, y: h + rad, rad: rad, spd: spd, c1: pair, c2: pair, pts: pts, kind: kind, hp: 1, maxHp: 1, ph: Math.random() * 6.28 });
     }
 
     function boom(x, y, col) {
@@ -141,7 +222,6 @@
         parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: Math.random() * 4 + 2, col: col, a: 1 });
       }
     }
-
     c.onpointerdown = function(e) {
       if (!playing) return;
       var rect = c.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top, hit = false;
@@ -149,10 +229,29 @@
         var it = items[i];
         if (Math.hypot(x - it.x, y - it.y) <= it.rad + 14) {
           hit = true;
-          if (it.kind === 'bomb') {
+          if (it.kind === 'boss') {
+            it.hp--;
+            it.rad = Math.max(42, it.rad - 1.2);
+            beep(220 + (12 - it.hp) * 30, 350, 0.08, 'square');
+            vibro('light');
+            boom(x, y, '#fb7185');
+            if (it.hp <= 0) {
+              var bonus = 50 * setCombo(combo + 1);
+              score += bonus; shake = 16;
+              beep(400, 950, 0.3, 'triangle'); vibro('ok');
+              boom(it.x, it.y, '#ffca3a');
+              texts.push({ x: it.x, y: it.y, str: 'БОСС +' + bonus + '👑', col: '#ffca3a', a: 1 });
+              items.splice(i, 1);
+            }
+          } else if (it.kind === 'bomb') {
             setCombo(0); score = Math.max(0, score - 5); shake = 14;
             beep(150, 40, 0.25, 'sawtooth'); vibro('err'); boom(it.x, it.y, '#ef4444');
             texts.push({ x: it.x, y: it.y, str: '-5', col: '#ef4444', a: 1 });
+            items.splice(i, 1);
+            if (gameMode === 'surv') {
+              lives--; updateStatus();
+              if (lives <= 0) { finishGame(); return; }
+            }
           } else {
             var add = it.pts * setCombo(combo + 1);
             score += add;
@@ -160,21 +259,39 @@
               beep(520, 880, 0.18, 'triangle'); vibro('medium'); boom(it.x, it.y, '#ffca3a');
               texts.push({ x: it.x, y: it.y, str: '+' + add + ' ⭐', col: '#ffca3a', a: 1 });
             } else if (it.kind === 'ice') {
-              freeze = 240; time += 3; timeEl.textContent = String(time);
+              freeze = 240;
+              if (gameMode === 'time') { time += 3; updateStatus(); }
               beep(600, 950, 0.2, 'sine'); vibro('medium'); boom(it.x, it.y, '#38bdf8');
-              texts.push({ x: it.x, y: it.y, str: '+3с ❄️', col: '#38bdf8', a: 1 });
+              texts.push({ x: it.x, y: it.y, str: '❄️ ЗАМОРОЗКА', col: '#38bdf8', a: 1 });
             } else {
               beep(340 + combo * 15, 680 + combo * 15, 0.1, 'sine'); vibro('light'); boom(it.x, it.y, it.c1);
               texts.push({ x: it.x, y: it.y, str: '+' + add, col: '#fff', a: 1 });
             }
+            items.splice(i, 1);
           }
           scoreEl.textContent = String(score);
-          items.splice(i, 1);
           break;
         }
       }
       if (!hit) setCombo(0);
     };
+
+    function finishGame() {
+      playing = false;
+      if (iv) clearInterval(iv);
+      if (raf) cancelAnimationFrame(raf);
+      beep(440, 880, 0.35, 'triangle');
+      vibro('ok');
+      coins += score;
+      var isRec = false;
+      if (score > best) { best = score; isRec = true; }
+      saveData();
+      renderShop();
+      titleEl.textContent = isRec ? 'Новый рекорд: ' + score + '! 🎉' : 'Счёт за игру: ' + score;
+      startBtn.textContent = 'Сыграть ещё';
+      overlay.style.display = 'flex';
+    }
+
     function loop() {
       if (!playing) return;
       ctx.save();
@@ -182,9 +299,11 @@
         ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
         shake = shake < 0.5 ? 0 : shake * 0.85;
       }
+
+      var th = themes;
       var bg = ctx.createLinearGradient(0, 0, 0, h);
-      bg.addColorStop(0, freeze > 0 ? '#0c2d48' : '#111827');
-      bg.addColorStop(1, '#090d16');
+      bg.addColorStop(0, freeze > 0 ? '#0c2d48' : th.top);
+      bg.addColorStop(1, th.bot);
       ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
 
       for (var s = 0; s < stars.length; s++) {
@@ -194,25 +313,29 @@
       }
       ctx.globalAlpha = 1;
 
-      if (freeze > 0) { freeze--; timePill.style.borderColor = '#38bdf8'; }
-      else timePill.style.borderColor = 'rgba(255,255,255,0.15)';
+      if (freeze > 0) { freeze--; statusPill.style.borderColor = '#38bdf8'; }
+      else statusPill.style.borderColor = 'rgba(255,255,255,0.18)';
 
       var slow = freeze > 0 ? 0.45 : 1;
       timer++;
-      if (timer > cfgMap[mode].rate / slow) { spawn(); timer = 0; }
+      if (timer > cfgMap[diff].rate / slow) { spawn(false); timer = 0; }
+      if (!bossSpawned && score >= 40) { bossSpawned = true; spawn(true); }
 
       for (var i = items.length - 1; i >= 0; i--) {
         var it = items[i];
-        it.y -= it.spd * slow; it.ph += 0.04; it.x = it.bx + Math.sin(it.ph) * 14;
-        var g = ctx.createRadialGradient(it.x - it.rad * 0.3, it.y - it.rad * 0.3, it.rad * 0.1, it.x, it.y, it.rad);
-var colA = String(it.c1).split(',')[0];
-var colB = String(it.c1).split(',')[1] || colA;
-g.addColorStop(0, it.kind === 'bomb' ? '#475569' : (it.kind === 'gold' ? '#fef08a' : (it.kind === 'ice' ? '#bae6fd' : colA)));
-g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d97706' : (it.kind === 'ice' ? '#0284c7' : colB)));
+        it.y -= it.spd * slow; it.ph += 0.04;
+        it.x = it.kind === 'boss' ? w / 2 + Math.sin(it.ph * 0.6) * 40 : it.bx + Math.sin(it.ph) * 14;
 
+        var g = ctx.createRadialGradient(it.x - it.rad * 0.3, it.y - it.rad * 0.3, it.rad * 0.1, it.x, it.y, it.rad);
+        g.addColorStop(0, it.kind === 'bomb' ? '#475569' : (it.kind === 'gold' ? '#fef08a' : (it.kind === 'ice' ? '#bae6fd' : it.c1)));
+        g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d97706' : (it.kind === 'ice' ? '#0284c7' : it.c2)));
         ctx.beginPath(); ctx.arc(it.x, it.y, it.rad, 0, 6.28); ctx.fillStyle = g; ctx.fill();
 
-        if (it.kind === 'bomb') {
+        if (it.kind === 'boss') {
+          ctx.lineWidth = 4; ctx.strokeStyle = '#ffca3a'; ctx.stroke();
+          ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('👑 ' + it.hp, it.x, it.y);
+        } else if (it.kind === 'bomb') {
           ctx.lineWidth = 3; ctx.strokeStyle = '#ef4444'; ctx.stroke();
           ctx.font = Math.round(it.rad) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('💣', it.x, it.y + 2);
@@ -224,7 +347,14 @@ g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d9770
             ctx.fillText(it.kind === 'gold' ? '⭐' : '❄️', it.x, it.y + 2);
           }
         }
-        if (it.y + it.rad < 0) items.splice(i, 1);
+
+        if (it.y + it.rad < 0) {
+          if (gameMode === 'surv' && (it.kind === 'norm' || it.kind === 'gold')) {
+            lives--; updateStatus(); setCombo(0); shake = 10;
+            if (lives <= 0) { items.splice(i, 1); finishGame(); return; }
+          }
+          items.splice(i, 1);
+        }
       }
 
       for (var j = parts.length - 1; j >= 0; j--) {
@@ -235,28 +365,24 @@ g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d9770
       for (var k = texts.length - 1; k >= 0; k--) {
         var tx = texts[k]; tx.y -= 1.8; tx.a -= 0.025;
         if (tx.a <= 0) texts.splice(k, 1);
-        else { ctx.globalAlpha = tx.a; ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = tx.col; ctx.textAlign = 'center'; ctx.fillText(tx.str, tx.x, tx.y); }
+        else { ctx.globalAlpha = tx.a; ctx.font = 'bold 20px sans-serif'; ctx.fillStyle = tx.col; ctx.textAlign = 'center'; ctx.fillText(tx.str, tx.x, tx.y); }
       }
       ctx.restore();
       raf = requestAnimationFrame(loop);
     }
 
     startBtn.onclick = function() {
-      resize(); score = 0; time = 30; items = []; parts = []; texts = []; timer = 0; freeze = 0; shake = 0;
-      setCombo(0); scoreEl.textContent = '0'; timeEl.textContent = '30'; playing = true; overlay.style.display = 'none';
+      resize(); score = 0; time = 30; lives = 3; items = []; parts = []; texts = [];
+      timer = 0; freeze = 0; shake = 0; bossSpawned = false;
+      setCombo(0); scoreEl.textContent = '0'; updateStatus();
+      playing = true; overlay.style.display = 'none';
       if (iv) clearInterval(iv); if (raf) cancelAnimationFrame(raf);
-      iv = setInterval(function() {
-        time--; timeEl.textContent = String(time);
-        if (time <= 0) {
-          playing = false; clearInterval(iv); cancelAnimationFrame(raf);
-          beep(440, 880, 0.35, 'triangle'); vibro('ok');
-          var isRec = false;
-          if (score > best) { best = score; try { localStorage.setItem('b_best', String(best)); } catch (e) {} bestEl.textContent = best; isRec = true; }
-          titleEl.textContent = isRec ? 'Новый рекорд! 🎉' : 'Время вышло!';
-          subEl.innerHTML = '<div class="tag" style="font-size:16px;color:#fff">Ваш счёт: <b>' + score + '</b> очков</div>';
-          startBtn.textContent = 'Сыграть ещё'; overlay.style.display = 'flex';
-        }
-      }, 1000);
+      if (gameMode === 'time') {
+        iv = setInterval(function() {
+          time--; updateStatus();
+          if (time <= 0) finishGame();
+        }, 1000);
+      }
       loop();
     };
   </script>
