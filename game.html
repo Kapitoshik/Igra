@@ -205,8 +205,11 @@
         var it = items[i];
         it.y -= it.spd * slow; it.ph += 0.04; it.x = it.bx + Math.sin(it.ph) * 14;
         var g = ctx.createRadialGradient(it.x - it.rad * 0.3, it.y - it.rad * 0.3, it.rad * 0.1, it.x, it.y, it.rad);
-        g.addColorStop(0, it.kind === 'bomb' ? '#475569' : (it.kind === 'gold' ? '#fef08a' : (it.kind === 'ice' ? '#bae6fd' : it.c1)));
-        g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d97706' : (it.kind === 'ice' ? '#0284c7' : it.c2)));
+var colA = String(it.c1).split(',')[0];
+var colB = String(it.c1).split(',')[1] || colA;
+g.addColorStop(0, it.kind === 'bomb' ? '#475569' : (it.kind === 'gold' ? '#fef08a' : (it.kind === 'ice' ? '#bae6fd' : colA)));
+g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d97706' : (it.kind === 'ice' ? '#0284c7' : colB)));
+
         ctx.beginPath(); ctx.arc(it.x, it.y, it.rad, 0, 6.28); ctx.fillStyle = g; ctx.fill();
 
         if (it.kind === 'bomb') {
