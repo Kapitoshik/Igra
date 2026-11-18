@@ -327,8 +327,12 @@
         it.x = it.kind === 'boss' ? w / 2 + Math.sin(it.ph * 0.6) * 40 : it.bx + Math.sin(it.ph) * 14;
 
         var g = ctx.createRadialGradient(it.x - it.rad * 0.3, it.y - it.rad * 0.3, it.rad * 0.1, it.x, it.y, it.rad);
-        g.addColorStop(0, it.kind === 'bomb' ? '#475569' : (it.kind === 'gold' ? '#fef08a' : (it.kind === 'ice' ? '#bae6fd' : it.c1)));
-        g.addColorStop(1, it.kind === 'bomb' ? '#0f172a' : (it.kind === 'gold' ? '#d97706' : (it.kind === 'ice' ? '#0284c7' : it.c2)));
+      var topCol = activeTheme === 'ocean' ? '#0369a1' : (activeTheme === 'sunset' ? '#7c2d12' : '#111827');
+      var botCol = activeTheme === 'ocean' ? '#082f49' : (activeTheme === 'sunset' ? '#1e1b4b' : '#090d16');
+      var bg = ctx.createLinearGradient(0, 0, 0, h);
+      bg.addColorStop(0, freeze > 0 ? '#0c2d48' : topCol);
+      bg.addColorStop(1, botCol);
+
         ctx.beginPath(); ctx.arc(it.x, it.y, it.rad, 0, 6.28); ctx.fillStyle = g; ctx.fill();
 
         if (it.kind === 'boss') {
