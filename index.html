@@ -56,7 +56,7 @@
     #overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 19, 34, 0.9);
+      background: rgba(15, 19, 34, 0.92);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -99,7 +99,6 @@
       font-weight: 600;
       border-radius: 10px;
       cursor: pointer;
-      transition: all 0.15s;
     }
     .diff-btn.active {
       background: rgba(59, 130, 246, 0.25);
@@ -116,10 +115,6 @@
       border-radius: 14px;
       cursor: pointer;
       box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-      transition: transform 0.1s;
-    }
-    #startBtn:active {
-      transform: scale(0.96);
     }
   </style>
 </head>
@@ -148,13 +143,46 @@
   </div>
 
   <script>
-    // Инициализация MAX WebApp
-    const tg = window.WebApp;
-    if (tg) {
-      tg.ready();
-      if (tg.enableClosingConfirmation) {
+    // Безопасная инициализация MAX WebApp
+    let tg = null;
+    try {
+      tg = window.WebApp || null;
+      if (tg && typeof tg.ready === 'function') {
+        tg.ready();
+      }
+      if (tg && typeof tg.enableClosingConfirmation === 'function') {
         tg.enableClosingConfirmation();
       }
+    } catch (err) {
+      console.warn('MAX WebApp init warning:', err);
+    }
+
+    // Безопасное чтение и запись рекорда
+    function getSavedScore() {
+      try {
+        return parseInt(localStorage.getItem('bubble_best_score')) || 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function setSavedScore(val) {
+      try {
+        localStorage.setItem('bubble_best_score', String(val));
+      } catch (e) {}
+    }
+
+    function triggerHaptic(type) {
+      try {
+        if (!tg || !tg.HapticFeedback) return;
+        if (type === 'error' && tg.HapticFeedback.notificationOccurred) {
+          tg.HapticFeedback.notificationOccurred('error');
+        } else if (type === 'success' && tg.HapticFeedback.notificationOccurred) {
+          tg.HapticFeedback.notificationOccurred('success');
+        } else if (tg.HapticFeedback.impactOccurred) {
+          tg.HapticFeedback.impactOccurred(type);
+        }
+      } catch (e) {}
     }
 
     const canvas = document.getElementById('gameCanvas');
@@ -174,7 +202,7 @@
     let particles = [];
     let floatingTexts = [];
     let score = 0;
-    let bestScore = parseInt(localStorage.getItem('bubble_best_score')) || 0;
+    let bestScore = getSavedScore();
     let timeLeft = 30;
     let isPlaying = false;
     let spawnTimer = 0;
@@ -184,7 +212,6 @@
 
     bestScoreEl.textContent = bestScore;
 
-    // Настройки уровней сложности
     const difficulties = {
       easy: { spawnRate: 26, speedMult: 0.8, bombChance: 0.10 },
       normal: { spawnRate: 20, speedMult: 1.15, bombChance: 0.18 },
@@ -193,7 +220,6 @@
 
     const colors = ['#ff595e', '#8ac926', '#1982c4', '#6a4c93', '#ff758f'];
 
-    // Выбор сложности
     diffButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         diffButtons.forEach(b => b.classList.remove('active'));
@@ -202,56 +228,56 @@
       });
     });
 
-    // Звуковой движок (Web Audio API)
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    let audioCtx;
-
+    let audioCtx = null;
     function playSound(type) {
       if (!soundEnabled) return;
-      if (!audioCtx) audioCtx = new AudioCtx();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
 
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
 
-      const now = audioCtx.currentTime;
-
-      if (type === 'pop') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(320, now);
-        osc.frequency.exponentialRampToValueAtTime(680, now + 0.09);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
-        osc.start(now);
-        osc.stop(now + 0.09);
-      } else if (type === 'gold') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(520, now);
-        osc.frequency.setValueAtTime(780, now + 0.07);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc.start(now);
-        osc.stop(now + 0.2);
-      } else if (type === 'bomb') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(140, now);
-        osc.frequency.exponentialRampToValueAtTime(40, now + 0.28);
-        gain.gain.setValueAtTime(0.35, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
-        osc.start(now);
-        osc.stop(now + 0.28);
-      } else if (type === 'end') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.setValueAtTime(554, now + 0.12);
-        osc.frequency.setValueAtTime(659, now + 0.24);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-        osc.start(now);
-        osc.stop(now + 0.45);
-      }
+        if (type === 'pop') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.09);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'gold') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.setValueAtTime(780, now + 0.07);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (type === 'bomb') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.28);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+          osc.start(now);
+          osc.stop(now + 0.28);
+        } else if (type === 'end') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554, now + 0.12);
+          osc.frequency.setValueAtTime(659, now + 0.24);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+          osc.start(now);
+          osc.stop(now + 0.45);
+        }
+      } catch (e) {}
     }
 
     soundBtn.addEventListener('click', () => {
@@ -303,34 +329,3 @@
         const speed = Math.random() * 4.5 + 1;
         particles.push({
           x, y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          radius: Math.random() * 4 + 2,
-          color,
-          alpha: 1
-        });
-      }
-    }
-
-    function addFloatingText(x, y, text, color) {
-      floatingTexts.push({ x, y, text, color, alpha: 1 });
-    }
-
-    function handleInput(e) {
-      if (!isPlaying) return;
-      const rect = canvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches.clientX : e.clientX;
-      const clientY = e.touches ? e.touches.clientY : e.clientY;
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-
-      for (let i = items.length - 1; i >= 0; i--) {
-        const item = items[i];
-        const dist = Math.hypot(x - item.x, y - item.y);
-
-        if (dist <= item.radius + 8) {
-          score = Math.max(0, score + item.points);
-          scoreEl.textContent = score;
-
-          if (item.type === 'bomb') {
-            playSound('bomb');
