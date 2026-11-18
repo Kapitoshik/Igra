@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Лопни шарики — MAX Mini App</title>
-  <!-- Подключаем официальный SDK мессенджера MAX -->
+  <title>Лопни шарики PRO — MAX Mini App</title>
   <script src="https://max.ru"></script>
   <style>
     * {
@@ -34,15 +33,30 @@
       right: 16px;
       display: flex;
       justify-content: space-between;
-      font-size: 20px;
+      align-items: center;
+      font-size: 18px;
       font-weight: 700;
       pointer-events: none;
       text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
+    #soundBtn {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     #overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 19, 34, 0.85);
+      background: rgba(15, 19, 34, 0.9);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -51,19 +65,52 @@
       padding: 20px;
     }
     h1 {
-      margin: 0 0 12px;
-      font-size: 32px;
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+    .record-badge {
+      background: rgba(255, 202, 58, 0.15);
+      color: #ffca3a;
+      border: 1px solid rgba(255, 202, 58, 0.4);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
     }
     p {
-      margin: 0 0 24px;
-      font-size: 18px;
+      margin: 0 0 20px;
+      font-size: 16px;
       color: #a0aec0;
+      max-width: 320px;
+      line-height: 1.4;
     }
-    button {
+    .difficulty-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .diff-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      border: 2px solid transparent;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .diff-btn.active {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: #3b82f6;
+      color: #ffffff;
+    }
+    #startBtn {
       background: #3b82f6;
       color: white;
       border: none;
-      padding: 16px 36px;
+      padding: 16px 42px;
       font-size: 18px;
       font-weight: 600;
       border-radius: 14px;
@@ -71,7 +118,7 @@
       box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
       transition: transform 0.1s;
     }
-    button:active {
+    #startBtn:active {
       transform: scale(0.96);
     }
   </style>
@@ -81,23 +128,32 @@
   <div id="hud">
     <div>Счёт: <span id="score">0</span></div>
     <div>Время: <span id="time">30</span>с</div>
+    <button id="soundBtn" title="Звук">🔊</button>
   </div>
 
   <canvas id="gameCanvas"></canvas>
 
   <div id="overlay">
     <h1 id="title">Лопни шарики</h1>
-    <p id="subtitle">Нажимай на шарики, чтобы набрать максимум очков за 30 секунд!</p>
+    <div class="record-badge">🏆 Рекорд: <span id="bestScore">0</span></div>
+    <p id="subtitle">Лопай цветные шары (+1/+2), золотые (+5) и избегай бомб (-5)!</p>
+    
+    <div class="difficulty-group" id="diffGroup">
+      <button class="diff-btn" data-diff="easy">Лёгкий</button>
+      <button class="diff-btn active" data-diff="normal">Средний</button>
+      <button class="diff-btn" data-diff="hard">Сложный</button>
+    </div>
+
     <button id="startBtn">Играть</button>
   </div>
 
   <script>
-    // 1. Инициализация MAX WebApp
+    // Инициализация MAX WebApp
     const tg = window.WebApp;
     if (tg) {
-      tg.ready(); // Сообщаем мессенджеру, что приложение загрузилось
+      tg.ready();
       if (tg.enableClosingConfirmation) {
-        tg.enableClosingConfirmation(); // Защита от случайного закрытия свайпом
+        tg.enableClosingConfirmation();
       }
     }
 
@@ -105,23 +161,104 @@
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const timeEl = document.getElementById('time');
+    const bestScoreEl = document.getElementById('bestScore');
     const overlay = document.getElementById('overlay');
     const titleEl = document.getElementById('title');
     const subtitleEl = document.getElementById('subtitle');
     const startBtn = document.getElementById('startBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const diffButtons = document.querySelectorAll('.diff-btn');
 
     let width, height;
-    let bubbles = [];
+    let items = [];
     let particles = [];
+    let floatingTexts = [];
     let score = 0;
+    let bestScore = parseInt(localStorage.getItem('bubble_best_score')) || 0;
     let timeLeft = 30;
     let isPlaying = false;
     let spawnTimer = 0;
     let gameInterval;
+    let soundEnabled = true;
+    let currentDiff = 'normal';
 
-    const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#ff758f'];
+    bestScoreEl.textContent = bestScore;
 
-    // Подстройка размера холста под экран смартфона
+    // Настройки уровней сложности
+    const difficulties = {
+      easy: { spawnRate: 26, speedMult: 0.8, bombChance: 0.10 },
+      normal: { spawnRate: 20, speedMult: 1.15, bombChance: 0.18 },
+      hard: { spawnRate: 14, speedMult: 1.55, bombChance: 0.28 }
+    };
+
+    const colors = ['#ff595e', '#8ac926', '#1982c4', '#6a4c93', '#ff758f'];
+
+    // Выбор сложности
+    diffButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        diffButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDiff = btn.dataset.diff;
+      });
+    });
+
+    // Звуковой движок (Web Audio API)
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'pop') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(680, now + 0.09);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      } else if (type === 'gold') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.setValueAtTime(780, now + 0.07);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (type === 'bomb') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.28);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+        osc.start(now);
+        osc.stop(now + 0.28);
+      } else if (type === 'end') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(554, now + 0.12);
+        osc.frequency.setValueAtTime(659, now + 0.24);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      }
+    }
+
+    soundBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+    });
+
     function resize() {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
@@ -129,23 +266,41 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // Создание нового шарика
-    function spawnBubble() {
-      const radius = Math.random() * 22 + 24; // Радиус от 24 до 46 px
+    function spawnItem() {
+      const cfg = difficulties[currentDiff];
+      const rand = Math.random();
+      let type = 'normal';
+
+      if (rand < cfg.bombChance) {
+        type = 'bomb';
+      } else if (rand < cfg.bombChance + 0.10) {
+        type = 'gold';
+      }
+
+      const radius = type === 'gold' ? 24 : (Math.random() * 18 + 25);
       const x = Math.random() * (width - radius * 2) + radius;
       const y = height + radius;
-      const speed = Math.random() * 2.5 + 2 + (30 - timeLeft) * 0.08; // Ускорение к концу игры
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      const points = radius < 32 ? 2 : 1; // Маленькие шарики дают 2 очка
+      const baseSpeed = Math.random() * 2 + 2 + (30 - timeLeft) * 0.06;
+      const speed = baseSpeed * cfg.speedMult * (type === 'gold' ? 1.3 : 1);
 
-      bubbles.push({ x, y, radius, speed, color, points });
+      let color = colors[Math.floor(Math.random() * colors.length)];
+      let points = radius < 31 ? 2 : 1;
+
+      if (type === 'bomb') {
+        color = '#1e293b';
+        points = -5;
+      } else if (type === 'gold') {
+        color = '#ffca3a';
+        points = 5;
+      }
+
+      items.push({ x, y, radius, speed, color, points, type });
     }
 
-    // Эффект брызг при лопании
     function createExplosion(x, y, color) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 12; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 4 + 1;
+        const speed = Math.random() * 4.5 + 1;
         particles.push({
           x, y,
           vx: Math.cos(angle) * speed,
@@ -157,133 +312,25 @@
       }
     }
 
-    // Обработка нажатий (тач и клик)
+    function addFloatingText(x, y, text, color) {
+      floatingTexts.push({ x, y, text, color, alpha: 1 });
+    }
+
     function handleInput(e) {
       if (!isPlaying) return;
       const rect = canvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const clientX = e.touches ? e.touches.clientX : e.clientX;
+      const clientY = e.touches ? e.touches.clientY : e.clientY;
       const x = clientX - rect.left;
       const y = clientY - rect.top;
 
-      // Проверяем попадание с конца массива (верхние шарики в приоритете)
-      for (let i = bubbles.length - 1; i >= 0; i--) {
-        const b = bubbles[i];
-        const dist = Math.hypot(x - b.x, y - b.y);
-        
-        if (dist <= b.radius + 8) { // +8px для удобства попадания пальцем
-          score += b.points;
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        const dist = Math.hypot(x - item.x, y - item.y);
+
+        if (dist <= item.radius + 8) {
+          score = Math.max(0, score + item.points);
           scoreEl.textContent = score;
-          createExplosion(b.x, b.y, b.color);
-          bubbles.splice(i, 1);
 
-          // Вибрация через MAX Bridge API
-          if (tg && tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('light');
-          }
-          break;
-        }
-      }
-    }
-
-    canvas.addEventListener('touchstart', handleInput, { passive: true });
-    canvas.addEventListener('mousedown', handleInput);
-
-    // Игровой цикл
-    function update() {
-      if (!isPlaying) return;
-      ctx.clearRect(0, 0, width, height);
-
-      // Спавн шариков
-      spawnTimer++;
-      if (spawnTimer > 22) {
-        spawnBubble();
-        spawnTimer = 0;
-      }
-
-      // Отрисовка и движение шариков
-      for (let i = bubbles.length - 1; i >= 0; i--) {
-        const b = bubbles[i];
-        b.y -= b.speed;
-
-        // Рисуем сам шарик
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-        ctx.fillStyle = b.color;
-        ctx.fill();
-
-        // Рисуем блик на шарике
-        ctx.beginPath();
-        ctx.arc(b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.22, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.fill();
-
-        // Удаляем улетевшие за экран
-        if (b.y + b.radius < 0) {
-          bubbles.splice(i, 1);
-        }
-      }
-
-      // Отрисовка частиц (брызг)
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.alpha -= 0.04;
-
-        if (p.alpha <= 0) {
-          particles.splice(i, 1);
-        } else {
-          ctx.save();
-          ctx.globalAlpha = p.alpha;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-
-      requestAnimationFrame(update);
-    }
-
-    // Запуск игры
-    function startGame() {
-      score = 0;
-      timeLeft = 30;
-      bubbles = [];
-      particles = [];
-      scoreEl.textContent = score;
-      timeEl.textContent = timeLeft;
-      isPlaying = true;
-      overlay.style.display = 'none';
-
-      clearInterval(gameInterval);
-      gameInterval = setInterval(() => {
-        timeLeft--;
-        timeEl.textContent = timeLeft;
-        if (timeLeft <= 0) {
-          endGame();
-        }
-      }, 1000);
-
-      update();
-    }
-
-    // Конец игры
-    function endGame() {
-      isPlaying = false;
-      clearInterval(gameInterval);
-      if (tg && tg.HapticFeedback) {
-        tg.HapticFeedback.notificationOccurred('success');
-      }
-      titleEl.textContent = 'Время вышло!';
-      subtitleEl.textContent = `Ваш результат: ${score} очков`;
-      startBtn.textContent = 'Сыграть ещё';
-      overlay.style.display = 'flex';
-    }
-
-    startBtn.addEventListener('click', startGame);
-  </script>
-</body>
-</html>
+          if (item.type === 'bomb') {
+            playSound('bomb');
