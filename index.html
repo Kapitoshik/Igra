@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Лопни шарики PRO — MAX Mini App</title>
-  <script src="https://max.ru"></script>
+  <script src="https://max.ru" defer></script>
   <style>
     * {
       box-sizing: border-box;
@@ -59,8 +59,8 @@
     #overlay {
       position: absolute;
       inset: 0;
-      z-index: 10;
-      background: rgba(15, 19, 34, 0.92);
+      z-index: 20;
+      background: rgba(15, 19, 34, 0.94);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -98,14 +98,14 @@
       background: rgba(255, 255, 255, 0.1);
       color: #cbd5e1;
       border: 2px solid transparent;
-      padding: 10px 14px;
-      font-size: 14px;
+      padding: 12px 16px;
+      font-size: 15px;
       font-weight: 600;
       border-radius: 10px;
       cursor: pointer;
     }
     .diff-btn.active {
-      background: rgba(59, 130, 246, 0.25);
+      background: rgba(59, 130, 246, 0.3);
       border-color: #3b82f6;
       color: #ffffff;
     }
@@ -113,9 +113,9 @@
       background: #3b82f6;
       color: white;
       border: none;
-      padding: 16px 42px;
-      font-size: 18px;
-      font-weight: 600;
+      padding: 16px 46px;
+      font-size: 19px;
+      font-weight: 700;
       border-radius: 14px;
       cursor: pointer;
       box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
@@ -130,7 +130,7 @@
   <div id="hud">
     <div>Счёт: <span id="score">0</span></div>
     <div>Время: <span id="time">30</span>с</div>
-    <button id="soundBtn" type="button" title="Звук">🔊</button>
+    <button id="soundBtn" type="button" onclick="toggleSound()">🔊</button>
   </div>
 
   <canvas id="gameCanvas"></canvas>
@@ -141,29 +141,31 @@
     <p id="subtitle">Лопай цветные шары (+1/+2), золотые (+5) и избегай бомб (-5)!</p>
     
     <div class="difficulty-group" id="diffGroup">
-      <button type="button" class="diff-btn" data-diff="easy">Лёгкий</button>
-      <button type="button" class="diff-btn active" data-diff="normal">Средний</button>
-      <button type="button" class="diff-btn" data-diff="hard">Сложный</button>
+      <button type="button" class="diff-btn" data-diff="easy" onclick="selectDiff('easy', this)">Лёгкий</button>
+      <button type="button" class="diff-btn active" data-diff="normal" onclick="selectDiff('normal', this)">Средний</button>
+      <button type="button" class="diff-btn" data-diff="hard" onclick="selectDiff('hard', this)">Сложный</button>
     </div>
 
-    <button id="startBtn" type="button">Играть</button>
+    <button id="startBtn" type="button" onclick="startGame()">Играть</button>
   </div>
 
   <script>
-    let tg = null;
-    try {
-      tg = window.WebApp || null;
-      if (tg && typeof tg.ready === 'function') {
-        tg.ready();
-      }
-      if (tg && typeof tg.enableClosingConfirmation === 'function') {
-        tg.enableClosingConfirmation();
-      }
-    } catch (err) {}
+    var tg = null;
+    window.addEventListener('load', function() {
+      try {
+        tg = window.WebApp || null;
+        if (tg && typeof tg.ready === 'function') {
+          tg.ready();
+        }
+        if (tg && typeof tg.enableClosingConfirmation === 'function') {
+          tg.enableClosingConfirmation();
+        }
+      } catch (e) {}
+    });
 
     function getSavedScore() {
       try {
-        return parseInt(localStorage.getItem('bubble_best_score')) || 0;
+        return parseInt(localStorage.getItem('bubble_best_score'), 10) || 0;
       } catch (e) {
         return 0;
       }
@@ -188,66 +190,72 @@
       } catch (e) {}
     }
 
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const timeEl = document.getElementById('time');
-    const bestScoreEl = document.getElementById('bestScore');
-    const overlay = document.getElementById('overlay');
-    const titleEl = document.getElementById('title');
-    const subtitleEl = document.getElementById('subtitle');
-    const startBtn = document.getElementById('startBtn');
-    const soundBtn = document.getElementById('soundBtn');
-    const diffButtons = document.querySelectorAll('.diff-btn');
+    var canvas = document.getElementById('gameCanvas');
+    var ctx = canvas.getContext('2d');
+    var scoreEl = document.getElementById('score');
+    var timeEl = document.getElementById('time');
+    var bestScoreEl = document.getElementById('bestScore');
+    var overlay = document.getElementById('overlay');
+    var titleEl = document.getElementById('title');
+    var subtitleEl = document.getElementById('subtitle');
+    var startBtn = document.getElementById('startBtn');
+    var soundBtn = document.getElementById('soundBtn');
 
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    let items = [];
-    let particles = [];
-    let floatingTexts = [];
-    let score = 0;
-    let bestScore = getSavedScore();
-    let timeLeft = 30;
-    let isPlaying = false;
-    let spawnTimer = 0;
-    let gameInterval = null;
-    let animFrameId = null;
-    let soundEnabled = true;
-    let currentDiff = 'normal';
+    var width = window.innerWidth || 360;
+    var height = window.innerHeight || 640;
+    var items = [];
+    var particles = [];
+    var floatingTexts = [];
+    var score = 0;
+    var bestScore = getSavedScore();
+    var timeLeft = 30;
+    var isPlaying = false;
+    var spawnTimer = 0;
+    var gameInterval = null;
+    var animFrameId = null;
+    var soundEnabled = true;
+    var currentDiff = 'normal';
 
     bestScoreEl.textContent = bestScore;
 
-    const difficulties = {
+    var difficulties = {
       easy: { spawnRate: 26, speedMult: 0.8, bombChance: 0.10 },
       normal: { spawnRate: 20, speedMult: 1.15, bombChance: 0.18 },
       hard: { spawnRate: 14, speedMult: 1.55, bombChance: 0.28 }
     };
 
-    const colors = ['#ff595e', '#8ac926', '#1982c4', '#6a4c93', '#ff758f'];
+    var colors = ['#ff595e', '#8ac926', '#1982c4', '#6a4c93', '#ff758f'];
 
-    diffButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        diffButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentDiff = btn.dataset.diff;
-      });
-    });
+    function selectDiff(diff, btnEl) {
+      currentDiff = diff;
+      var buttons = document.querySelectorAll('.diff-btn');
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove('active');
+      }
+      if (btnEl) {
+        btnEl.classList.add('active');
+      }
+    }
 
-    let audioCtx = null;
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+    }
+
+    var audioCtx = null;
     function playSound(type) {
       if (!soundEnabled) return;
       try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
         if (!audioCtx) audioCtx = new AudioCtx();
         if (audioCtx.state === 'suspended') audioCtx.resume();
 
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        const now = audioCtx.currentTime;
+        var now = audioCtx.currentTime;
 
         if (type === 'pop') {
           osc.type = 'sine';
@@ -286,23 +294,17 @@
       } catch (e) {}
     }
 
-    soundBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      soundEnabled = !soundEnabled;
-      soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
-    });
-
     function resize() {
-      width = canvas.width = window.innerWidth || document.documentElement.clientWidth;
-      height = canvas.height = window.innerHeight || document.documentElement.clientHeight;
+      width = canvas.width = window.innerWidth || document.documentElement.clientWidth || 360;
+      height = canvas.height = window.innerHeight || document.documentElement.clientHeight || 640;
     }
     window.addEventListener('resize', resize);
     resize();
 
     function spawnItem() {
-      const cfg = difficulties[currentDiff];
-      const rand = Math.random();
-      let type = 'normal';
+      var cfg = difficulties[currentDiff] || difficulties.normal;
+      var rand = Math.random();
+      var type = 'normal';
 
       if (rand < cfg.bombChance) {
         type = 'bomb';
@@ -310,20 +312,12 @@
         type = 'gold';
       }
 
-      const radius = type === 'gold' ? 24 : (Math.random() * 18 + 25);
-      const x = Math.random() * Math.max(20, width - radius * 2) + radius;
-      const y = height + radius;
-      const baseSpeed = Math.random() * 2 + 2 + (30 - timeLeft) * 0.06;
-      const speed = baseSpeed * cfg.speedMult * (type === 'gold' ? 1.3 : 1);
+      var radius = type === 'gold' ? 24 : (Math.random() * 18 + 25);
+      var x = Math.random() * Math.max(20, width - radius * 2) + radius;
+      var y = height + radius;
+      var baseSpeed = Math.random() * 2 + 2 + (30 - timeLeft) * 0.06;
+      var speed = baseSpeed * cfg.speedMult * (type === 'gold' ? 1.3 : 1);
 
-      let color = colors[Math.floor(Math.random() * colors.length)];
-      let points = radius < 31 ? 2 : 1;
-
-      if (type === 'bomb') {
-        color = '#1e293b';
-        points = -5;
-      } else if (type === 'gold') {
-        color = '#ffca3a';
-        points = 5;
-      }
+      var color = colors[Math.floor(Math.random() * colors.length)];
+      var points = radius < 31 ? 2 : 1;
 
