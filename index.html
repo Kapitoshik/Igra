@@ -9,6 +9,7 @@
     * {
       box-sizing: border-box;
       user-select: none;
+      -webkit-user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
     body, html {
@@ -25,6 +26,7 @@
       display: block;
       width: 100%;
       height: 100%;
+      touch-action: none;
     }
     #hud {
       position: absolute;
@@ -37,6 +39,7 @@
       font-size: 18px;
       font-weight: 700;
       pointer-events: none;
+      z-index: 5;
       text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
     #soundBtn {
@@ -56,6 +59,7 @@
     #overlay {
       position: absolute;
       inset: 0;
+      z-index: 10;
       background: rgba(15, 19, 34, 0.92);
       display: flex;
       flex-direction: column;
@@ -116,6 +120,9 @@
       cursor: pointer;
       box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
     }
+    #startBtn:active {
+      transform: scale(0.96);
+    }
   </style>
 </head>
 <body>
@@ -123,7 +130,7 @@
   <div id="hud">
     <div>Счёт: <span id="score">0</span></div>
     <div>Время: <span id="time">30</span>с</div>
-    <button id="soundBtn" title="Звук">🔊</button>
+    <button id="soundBtn" type="button" title="Звук">🔊</button>
   </div>
 
   <canvas id="gameCanvas"></canvas>
@@ -134,16 +141,15 @@
     <p id="subtitle">Лопай цветные шары (+1/+2), золотые (+5) и избегай бомб (-5)!</p>
     
     <div class="difficulty-group" id="diffGroup">
-      <button class="diff-btn" data-diff="easy">Лёгкий</button>
-      <button class="diff-btn active" data-diff="normal">Средний</button>
-      <button class="diff-btn" data-diff="hard">Сложный</button>
+      <button type="button" class="diff-btn" data-diff="easy">Лёгкий</button>
+      <button type="button" class="diff-btn active" data-diff="normal">Средний</button>
+      <button type="button" class="diff-btn" data-diff="hard">Сложный</button>
     </div>
 
-    <button id="startBtn">Играть</button>
+    <button id="startBtn" type="button">Играть</button>
   </div>
 
   <script>
-    // Безопасная инициализация MAX WebApp
     let tg = null;
     try {
       tg = window.WebApp || null;
@@ -153,11 +159,8 @@
       if (tg && typeof tg.enableClosingConfirmation === 'function') {
         tg.enableClosingConfirmation();
       }
-    } catch (err) {
-      console.warn('MAX WebApp init warning:', err);
-    }
+    } catch (err) {}
 
-    // Безопасное чтение и запись рекорда
     function getSavedScore() {
       try {
         return parseInt(localStorage.getItem('bubble_best_score')) || 0;
@@ -197,7 +200,8 @@
     const soundBtn = document.getElementById('soundBtn');
     const diffButtons = document.querySelectorAll('.diff-btn');
 
-    let width, height;
+    let width = window.innerWidth;
+    let height = window.innerHeight;
     let items = [];
     let particles = [];
     let floatingTexts = [];
@@ -206,7 +210,8 @@
     let timeLeft = 30;
     let isPlaying = false;
     let spawnTimer = 0;
-    let gameInterval;
+    let gameInterval = null;
+    let animFrameId = null;
     let soundEnabled = true;
     let currentDiff = 'normal';
 
@@ -221,7 +226,8 @@
     const colors = ['#ff595e', '#8ac926', '#1982c4', '#6a4c93', '#ff758f'];
 
     diffButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         diffButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentDiff = btn.dataset.diff;
@@ -280,14 +286,15 @@
       } catch (e) {}
     }
 
-    soundBtn.addEventListener('click', () => {
+    soundBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       soundEnabled = !soundEnabled;
       soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
     });
 
     function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      width = canvas.width = window.innerWidth || document.documentElement.clientWidth;
+      height = canvas.height = window.innerHeight || document.documentElement.clientHeight;
     }
     window.addEventListener('resize', resize);
     resize();
@@ -304,7 +311,7 @@
       }
 
       const radius = type === 'gold' ? 24 : (Math.random() * 18 + 25);
-      const x = Math.random() * (width - radius * 2) + radius;
+      const x = Math.random() * Math.max(20, width - radius * 2) + radius;
       const y = height + radius;
       const baseSpeed = Math.random() * 2 + 2 + (30 - timeLeft) * 0.06;
       const speed = baseSpeed * cfg.speedMult * (type === 'gold' ? 1.3 : 1);
@@ -320,12 +327,3 @@
         points = 5;
       }
 
-      items.push({ x, y, radius, speed, color, points, type });
-    }
-
-    function createExplosion(x, y, color) {
-      for (let i = 0; i < 12; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 4.5 + 1;
-        particles.push({
-          x, y,
